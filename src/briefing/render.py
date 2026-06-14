@@ -16,6 +16,8 @@ def _render_item_card(item: SourceItem, index: int, total: int) -> str:
         tags.append(f"RANK {item.metadata['rank']}")
     if item.metadata.get("fresh"):
         tags.append("FRESH")
+    if item.metadata.get("platform"):
+        tags.append(str(item.metadata["platform"]).upper())
     tag_line = " / ".join(tags) if tags else "SOURCE"
     summary = item.summary or "暂无摘要"
     return (
@@ -155,12 +157,16 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
         f"### 封面摘要\n{_cover_summary(ai_items, video_items, github_items)}",
         f"### 本期关键词\n{_keywords(ai_items, video_items, github_items)}",
         f"### 一句话总评\n{_one_line_summary(ai_items, video_items, github_items)}",
+        "---",
         _render_section(1, "模型发布/更新", "MODEL RELEASES", ai_items),
         f"### AI 圈爆款/趋势\n{ai_trend}",
+        "---",
         _render_section(2, "产品发布/更新", "PRODUCT", video_items),
         f"### 爆款原因分析\n{_top_reason(video_items)}\n\n### 爆款结构判断\n{_analyze_video_trends(video_items)}",
+        "---",
         _render_section(3, "行业动态", "INDUSTRY", github_items),
         f"### GitHub 爆款/趋势\n{github_trend}\n\n近更新仓库：{freshness} 个",
+        "---",
         "### 趋势判断\n当前信号更偏向“工具化、低门槛、可复制”的内容形态。如果同一主题在多平台同时出现，后续 1-2 个周期内大概率继续发酵。",
         "### 行动建议\n关注可快速复用的提示词、脚本、工作流和轻量工具链。对高热度视频和仓库建立跟踪清单，观察二次传播与 star 增长。重要主题在下次简报中继续对比验证。",
     ]
