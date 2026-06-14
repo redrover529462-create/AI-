@@ -1,5 +1,8 @@
 ﻿from __future__ import annotations
 
+from collections import Counter
+from typing import Any
+
 from .models import SourceItem
 
 
@@ -41,6 +44,46 @@ def _analyze_video_trends(items: list[SourceItem]) -> str:
     )
 
 
+def _trend_keywords(items: list[SourceItem], groups: dict[str, list[str]]) -> list[tuple[str, int]]:
+    counter: Counter[str] = Counter()
+    for item in items:
+        text = f"{item.title} {item.summary or ''}"
+        for label, keywords in groups.items():
+            if any(keyword.lower() in text.lower() for keyword in keywords):
+                counter[label] += 1
+    return counter.most_common()
+
+
+def _analyze_ai_trends(items: list[SourceItem]) -> str:
+    if not items:
+        return "- 当前暂无 AI 样本。"
+    groups = {
+        "模型发布": ["模型", "release", "launch", "发布", "model"],
+        "Agent/工具": ["agent", "工具", "workflow", "app", "assistant", "插件"],
+        "研究/论文": ["paper", "研究", "论文", "benchmark", "eval"],
+    }
+    top = _trend_keywords(items, groups)
+    if not top:
+        return "- 当前 AI 样本更偏通用新闻，暂未形成明显主题聚类。"
+    return "- 主题聚类：" + "，".join(f"{name}{count}条" for name, count in top[:3]) + "。"
+
+
+def _analyze_github_trends(items: list[SourceItem]) -> str:
+    if not items:
+        return "- 当前暂无 GitHub 样本。"
+    groups = {
+        "LLM/Agent": ["llm", "agent", "chat", "assistant"],
+        "开发工具": ["cli", "tool", "workflow", "dev", "sdk"],
+        "数据/检索": ["search", "rag", "index", "vector", "db"],
+    }
+    top = _trend_keywords(items, groups)
+    freshness = sum(1 for item in items if item.metadata.get("fresh", False))
+    return (
+        f"- 主题聚类：" + ("，".join(f"{name}{count}个" for name, count in top[:3]) if top else "暂无明显聚类") + "。\n"
+        f"- 近更新仓库：{freshness} 个，说明近期 momentum 仍在。"
+    )
+
+
 def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
     return (
         f"# {title}\n\n"
@@ -49,10 +92,12 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
         f"- 爆款视频：{len(video_items)} 条\n"
         f"- GitHub 项目：{len(github_items)} 个\n\n"
         f"## AI 圈新东西\n{_render_list(ai_items)}\n\n"
+        f"## AI 圈爆款/趋势\n{_analyze_ai_trends(ai_items)}\n\n"
         f"## 爆款视频链接\n{_render_list(video_items)}\n\n"
         f"## 爆款原因分析\n{_top_reason(video_items)}\n\n"
         f"## 爆款结构判断\n{_analyze_video_trends(video_items)}\n\n"
         f"## GitHub 优质项目\n{_render_list(github_items)}\n\n"
+        f"## GitHub 爆款/趋势\n{_analyze_github_trends(github_items)}\n\n"
         f"## 趋势判断\n"
         f"- 当前信号更偏向“工具化、低门槛、可复制”的内容形态。\n"
         f"- 如果同一主题在多平台同时出现，后续 1-2 个周期内大概率继续发酵。\n\n"

@@ -20,6 +20,7 @@ class AppConfig:
     feishu_targets: tuple[FeishuTarget, ...] = field(default_factory=tuple)
     github_token: str | None = None
     github_query: str = "stars:>100 topic:artificial-intelligence"
+    xhs_hot_token: str | None = None
     state_path: str = "state/briefing_state.json"
     sources: dict[str, Any] = field(default_factory=dict)
 
@@ -57,6 +58,7 @@ def load_config(path: Path) -> AppConfig:
         feishu_targets=targets,
         github_token=data.get("github_token") or os.getenv("GITHUB_TOKEN"),
         github_query=str(data.get("github_query", "stars:>100 topic:artificial-intelligence")),
+        xhs_hot_token=data.get("xhs_hot_token") or os.getenv("XHS_HOT_TOKEN"),
         state_path=str(data.get("state_path", "state/briefing_state.json")),
         sources=dict(data.get("sources", {})),
     )
@@ -73,12 +75,12 @@ def default_config() -> dict[str, Any]:
         "state_path": "state/briefing_state.json",
         "sources": {
             "github": {"enabled": True},
-            "ai": {"enabled": True, "urls": ["https://openai.com/news/"]},
+            "ai": {"enabled": True, "urls": ["https://openai.com/news/", "https://openai.com/index/"]},
             "video": {
                 "enabled": True,
-                "feeds": [
-                    {"name": "douyin", "url": "https://www.iesdouyin.com/share/video/"},
-                    {"name": "xiaohongshu", "url": "https://www.xiaohongshu.com/explore"},
+                "sources": [
+                    {"provider": "douyin_hotlist", "name": "抖音热榜", "url": "https://api.iyuns.com/api/douyinhot"},
+                    {"provider": "xhs_hot_search", "name": "小红书热搜", "url": "https://api.justoneapi.com/api/xiaohongshu/hot-search/v1", "requires_token": True},
                 ],
             },
         },

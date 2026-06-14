@@ -5,7 +5,7 @@ import json
 import sys
 
 from .config import AppConfig, default_config, load_config
-from .models import BriefingBundle, SourceItem
+from .models import BriefingBundle
 from .render import render_briefing
 from .state import record_send, should_send
 from .feishu import send_message
@@ -17,7 +17,7 @@ from .sources.video import fetch_short_video_trends
 def load_bundle(config: AppConfig) -> BriefingBundle:
     sources = config.sources
     ai_items = tuple(fetch_ai_news(sources.get("ai", {}).get("urls")))
-    video_items = tuple(fetch_short_video_trends(sources.get("video", {}).get("urls")))
+    video_items = tuple(fetch_short_video_trends(sources.get("video", {}).get("sources"), xhs_hot_token=config.xhs_hot_token))
     github_items = tuple(fetch_github_projects(config.github_query))
     return BriefingBundle(ai_items=ai_items, video_items=video_items, github_items=github_items)
 
