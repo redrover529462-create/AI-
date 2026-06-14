@@ -1,9 +1,11 @@
-from briefing.render import render_briefing
+ï»¿from __future__ import annotations
+
 from briefing.models import SourceItem
+from briefing.render import render_briefing
 
 
 def main() -> int:
-    print(render_briefing("³¿¼ä¼ò±¨", [SourceItem(title="A", url="https://a")], [], []))
+    print(render_briefing("æ™¨é—´ç®€æŠ¥", [SourceItem(title="A", url="https://a")], [], []))
     return 0
 
 
