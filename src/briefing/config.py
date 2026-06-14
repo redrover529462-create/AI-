@@ -4,12 +4,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 import json
+import os
 
 
 @dataclass(frozen=True)
 class FeishuTarget:
     kind: str
     id: str
+    label: str = ""
 
 
 @dataclass(frozen=True)
@@ -25,23 +27,35 @@ class AppConfig:
 def _parse_target(raw: dict[str, Any]) -> FeishuTarget:
     kind = str(raw.get("kind", "")).strip()
     target_id = str(raw.get("id", "")).strip()
+    label = str(raw.get("label", "")).strip()
     if kind not in {"user", "chat"}:
         raise ValueError("feishu_targets entries must include kind=user or kind=chat")
     if not target_id:
         raise ValueError("feishu_targets entries must include id")
-    return FeishuTarget(kind=kind, id=target_id)
+    return FeishuTarget(kind=kind, id=target_id, label=label)
+
+
+def _merge_targets(file_targets: list[dict[str, Any]], env_user_id: str | None, env_chat_id: str | None) -> tuple[FeishuTarget, ...]:
+    targets = [_parse_target(item) for item in file_targets]
+    if env_user_id and not any(target.kind == "user" for target in targets):
+        targets.append(FeishuTarget(kind="user", id=env_user_id, label="env-user"))
+    if env_chat_id and not any(target.kind == "chat" for target in targets):
+        targets.append(FeishuTarget(kind="chat", id=env_chat_id, label="env-chat"))
+    return tuple(targets)
 
 
 def load_config(path: Path) -> AppConfig:
     data = json.loads(path.read_text(encoding="utf-8"))
-    raw_targets = data.get("feishu_targets")
-    if not raw_targets:
+    raw_targets = data.get("feishu_targets") or []
+    env_user_id = os.getenv("FEISHU_USER_ID")
+    env_chat_id = os.getenv("FEISHU_CHAT_ID")
+    targets = _merge_targets(raw_targets, env_user_id, env_chat_id)
+    if not targets:
         raise ValueError("missing required field: feishu_targets")
-    targets = tuple(_parse_target(item) for item in raw_targets)
     return AppConfig(
         timezone=str(data.get("timezone", "Asia/Shanghai")),
         feishu_targets=targets,
-        github_token=data.get("github_token"),
+        github_token=data.get("github_token") or os.getenv("GITHUB_TOKEN"),
         github_query=str(data.get("github_query", "stars:>100 topic:artificial-intelligence")),
         state_path=str(data.get("state_path", "state/briefing_state.json")),
         sources=dict(data.get("sources", {})),
@@ -52,14 +66,20 @@ def default_config() -> dict[str, Any]:
     return {
         "timezone": "Asia/Shanghai",
         "feishu_targets": [
-            {"kind": "user", "id": "ou_your_open_id"},
-            {"kind": "chat", "id": "oc_your_chat_id"},
+            {"kind": "user", "id": "ou_your_open_id", "label": "me"},
+            {"kind": "chat", "id": "oc_your_chat_id", "label": "team"},
         ],
         "github_query": "stars:>100 topic:artificial-intelligence",
         "state_path": "state/briefing_state.json",
         "sources": {
             "github": {"enabled": True},
             "ai": {"enabled": True, "urls": ["https://openai.com/news/"]},
-            "video": {"enabled": True, "urls": ["https://www.douyin.com/", "https://www.xiaohongshu.com/"]},
+            "video": {
+                "enabled": True,
+                "feeds": [
+                    {"name": "douyin", "url": "https://www.iesdouyin.com/share/video/"},
+                    {"name": "xiaohongshu", "url": "https://www.xiaohongshu.com/explore"},
+                ],
+            },
         },
     }

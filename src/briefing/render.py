@@ -18,8 +18,27 @@ def _top_reason(items: list[SourceItem]) -> str:
         keywords.append("高热度")
     if best.summary:
         keywords.append("信息密度高")
-    keywords.append("可复用")
+    if best.metadata.get("hook_strength", 0) >= 2:
+        keywords.append("强钩子")
+    if best.metadata.get("repeatability", 0) >= 2:
+        keywords.append("可复用")
+    if not keywords:
+        keywords.append("具备传播势能")
     return f"- {best.title} 之所以更强，主要因为{'、'.join(keywords)}，且具备明显传播势能。"
+
+
+def _analyze_video_trends(items: list[SourceItem]) -> str:
+    if not items:
+        return "- 当前暂无可分析的视频样本。"
+    hooks = sum(1 for item in items if item.metadata.get("hook_strength", 0) >= 2)
+    utility = sum(1 for item in items if item.metadata.get("utility", 0) >= 2)
+    emotion = sum(1 for item in items if item.metadata.get("emotion", 0) >= 2)
+    repeatable = sum(1 for item in items if item.metadata.get("repeatability", 0) >= 2)
+    return (
+        f"- 样本里有 {hooks} 条强钩子内容、{utility} 条强工具/教程内容、{emotion} 条强情绪内容。\n"
+        f"- 如果重复出现“教程 + 模板 + 对比前后效果”，通常意味着更容易二次扩散。\n"
+        f"- 具备高可复用性的内容更适合做成跟踪清单和选题库。"
+    )
 
 
 def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
@@ -32,6 +51,7 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
         f"## AI 圈新东西\n{_render_list(ai_items)}\n\n"
         f"## 爆款视频链接\n{_render_list(video_items)}\n\n"
         f"## 爆款原因分析\n{_top_reason(video_items)}\n\n"
+        f"## 爆款结构判断\n{_analyze_video_trends(video_items)}\n\n"
         f"## GitHub 优质项目\n{_render_list(github_items)}\n\n"
         f"## 趋势判断\n"
         f"- 当前信号更偏向“工具化、低门槛、可复制”的内容形态。\n"
