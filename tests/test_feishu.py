@@ -14,7 +14,8 @@ def test_send_message_builds_command(monkeypatch):
         return Result()
 
     monkeypatch.setattr("subprocess.run", fake_run)
-    result = send_message(FeishuTarget(kind="user", id="ou_x"), "hello")
+    result = send_message(FeishuTarget(kind="user", id="ou_x"), "中文测试")
     assert "--msg-type" in calls["command"]
     assert "--content" in calls["command"]
+    assert "\\u4e2d\\u6587" in calls["command"][-2]
     assert result["stdout"] == "{}"
