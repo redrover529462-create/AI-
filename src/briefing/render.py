@@ -87,6 +87,49 @@ def _hero_line(day: str, title: str, story_count: int) -> str:
     )
 
 
+def _cover_summary(ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
+    all_items = ai_items + video_items + github_items
+    if not all_items:
+        return "今日没有可用内容样本。"
+    top = all_items[0]
+    if top.source == "video":
+        return f"今天最强的信号来自视频侧，{top.title} 具备明显钩子与复用特征。"
+    if top.source == "github":
+        return f"今天最强的信号来自 GitHub 侧，{top.title} 展示出持续 momentum。"
+    return f"今天最强的信号来自 AI 圈，{top.title} 更像是后续扩散的起点。"
+
+
+def _keywords(ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
+    keywords: list[str] = []
+    for item in (ai_items[:2] + video_items[:2] + github_items[:2]):
+        if item.metadata.get("category"):
+            keywords.append(str(item.metadata["category"]))
+        elif item.source == "video":
+            keywords.extend(["爆款", "钩子", "复用"])
+        elif item.source == "github":
+            keywords.extend(["开源", "趋势", "Momentum"])
+        else:
+            keywords.extend(["动态", "发布", "更新"])
+    seen: list[str] = []
+    for keyword in keywords:
+        if keyword not in seen:
+            seen.append(keyword)
+    return " / ".join(seen[:5]) if seen else "AI / 视频 / GitHub"
+
+
+def _one_line_summary(ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
+    if not (ai_items or video_items or github_items):
+        return "当前没有足够样本，但自动化链路已就绪。"
+    parts = []
+    if ai_items:
+        parts.append(f"AI 圈偏 {ai_items[0].title}")
+    if video_items:
+        parts.append(f"视频侧最值得跟的是 {video_items[0].title}")
+    if github_items:
+        parts.append(f"GitHub 里 momentum 最强的是 {github_items[0].title}")
+    return "；".join(parts) + "。"
+
+
 def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[SourceItem], github_items: list[SourceItem]) -> str:
     ai_trend = _analyze_group(
         ai_items,
@@ -109,6 +152,9 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
     freshness = sum(1 for item in github_items if item.metadata.get("fresh", False))
     sections = [
         _hero_line(date.today().strftime('%Y.%m.%d'), title, len(ai_items) + len(video_items) + len(github_items)),
+        f"### 封面摘要\n{_cover_summary(ai_items, video_items, github_items)}",
+        f"### 本期关键词\n{_keywords(ai_items, video_items, github_items)}",
+        f"### 一句话总评\n{_one_line_summary(ai_items, video_items, github_items)}",
         _render_section(1, "模型发布/更新", "MODEL RELEASES", ai_items),
         f"### AI 圈爆款/趋势\n{ai_trend}",
         _render_section(2, "产品发布/更新", "PRODUCT", video_items),
