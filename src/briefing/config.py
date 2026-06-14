@@ -71,7 +71,7 @@ def default_config() -> dict[str, Any]:
     return {
         "timezone": "Asia/Shanghai",
         "feishu_targets": [
-            {"kind": "user", "id": "oc_769b1ff9f89b9d1a1ba8aa75fc0cfba3", "label": "me"},
+            {"kind": "user", "id": "ou_47c247d6040acf2c059fe70cc3d322ca", "label": "me"},
             {"kind": "chat", "id": "oc_your_chat_id", "label": "team"},
         ],
         "github_query": "stars:>100 topic:artificial-intelligence",
