@@ -1,14 +1,39 @@
 ﻿from __future__ import annotations
 
 from collections import Counter
+from datetime import date
 
 from .models import SourceItem
 
 
-def _render_list(items: list[SourceItem]) -> str:
+def _render_item_card(item: SourceItem, index: int, total: int) -> str:
+    tags = []
+    if item.source:
+        tags.append(item.source.upper())
+    if item.metadata.get("category"):
+        tags.append(str(item.metadata["category"]))
+    if item.metadata.get("rank"):
+        tags.append(f"RANK {item.metadata['rank']}")
+    if item.metadata.get("fresh"):
+        tags.append("FRESH")
+    tag_line = " / ".join(tags) if tags else "SOURCE"
+    summary = item.summary or "暂无摘要"
+    return (
+        f"**{item.title}**  \n"
+        f"`{tag_line}`  \n"
+        f"{summary}  \n"
+        f"[{item.url}]({item.url})"
+    )
+
+
+def _render_section(number: int, title: str, subtitle: str, items: list[SourceItem]) -> str:
+    header = f"## {number:02d} {title}  \n*{subtitle}*  \n`{len(items)} 篇`"
     if not items:
-        return "- 暂无可用条目"
-    return "\n".join(f"- [{item.title}]({item.url})" for item in items)
+        return header + "\n\n- 暂无可用条目"
+    blocks = []
+    for index, item in enumerate(items, start=1):
+        blocks.append(_render_item_card(item, index, len(items)))
+    return header + "\n\n" + "\n\n---\n\n".join(blocks)
 
 
 def _top_reason(items: list[SourceItem]) -> str:
@@ -26,7 +51,7 @@ def _top_reason(items: list[SourceItem]) -> str:
         keywords.append("可复用")
     if not keywords:
         keywords.append("具备传播势能")
-    return f"- {best.title} 之所以更强，主要因为{'、'.join(keywords)}，且具备明显传播势能。"
+    return f"{best.title} 更强的原因：{'、'.join(keywords)}。"
 
 
 def _analyze_group(items: list[SourceItem], groups: dict[str, list[str]], fallback: str) -> str:
@@ -40,20 +65,25 @@ def _analyze_group(items: list[SourceItem], groups: dict[str, list[str]], fallba
                 counter[label] += 1
     if not counter:
         return fallback
-    return "- 主题聚类：" + "，".join(f"{name}{count}条" for name, count in counter.most_common(3)) + "。"
+    top = counter.most_common(3)
+    return "；".join(f"{name}{count}条" for name, count in top)
 
 
 def _analyze_video_trends(items: list[SourceItem]) -> str:
     if not items:
-        return "- 当前暂无可分析的视频样本。"
+        return "暂无视频样本。"
     hooks = sum(1 for item in items if item.metadata.get("hook_strength", 0) >= 2)
     utility = sum(1 for item in items if item.metadata.get("utility", 0) >= 2)
     emotion = sum(1 for item in items if item.metadata.get("emotion", 0) >= 2)
     repeatable = sum(1 for item in items if item.metadata.get("repeatability", 0) >= 2)
+    return f"强钩子 {hooks} | 强工具 {utility} | 强情绪 {emotion} | 高复用 {repeatable}"
+
+
+def _hero_line(day: str, title: str, story_count: int) -> str:
     return (
-        f"- 样本里有 {hooks} 条强钩子内容、{utility} 条强工具/教程内容、{emotion} 条强情绪内容。\n"
-        f"- 如果重复出现“教程 + 模板 + 对比前后效果”，通常意味着更容易二次扩散。\n"
-        f"- 具备高可复用性的内容更适合做成跟踪清单和选题库。"
+        f"VOL.{day} · {story_count} STORIES · {title.upper()} DAILY\n\n"
+        f"# AI HOT 日报\n\n"
+        f"{date.today().strftime('%Y年%m月%d日')}  ·  每日晨间简报"
     )
 
 
@@ -65,7 +95,7 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
             "Agent/工具": ["agent", "工具", "workflow", "app", "assistant", "插件"],
             "研究/论文": ["paper", "研究", "论文", "benchmark", "eval"],
         },
-        "- 当前 AI 样本更偏通用新闻，暂未形成明显主题聚类。",
+        "当前 AI 样本更偏通用新闻，暂未形成明显主题聚类。",
     )
     github_trend = _analyze_group(
         github_items,
@@ -74,28 +104,18 @@ def render_briefing(title: str, ai_items: list[SourceItem], video_items: list[So
             "开发工具": ["cli", "tool", "workflow", "dev", "sdk"],
             "数据/检索": ["search", "rag", "index", "vector", "db"],
         },
-        "- 当前 GitHub 样本暂未形成明显主题聚类。",
+        "当前 GitHub 样本暂未形成明显主题聚类。",
     )
     freshness = sum(1 for item in github_items if item.metadata.get("fresh", False))
-    return (
-        f"# {title}\n\n"
-        f"## 今日摘要\n"
-        f"- AI 圈：{len(ai_items)} 条\n"
-        f"- 爆款视频：{len(video_items)} 条\n"
-        f"- GitHub 项目：{len(github_items)} 个\n\n"
-        f"## AI 圈新东西\n{_render_list(ai_items)}\n\n"
-        f"## AI 圈爆款/趋势\n{ai_trend}\n\n"
-        f"## 爆款视频链接\n{_render_list(video_items)}\n\n"
-        f"## 爆款原因分析\n{_top_reason(video_items)}\n\n"
-        f"## 爆款结构判断\n{_analyze_video_trends(video_items)}\n\n"
-        f"## GitHub 优质项目\n{_render_list(github_items)}\n\n"
-        f"## GitHub 爆款/趋势\n{github_trend}\n"
-        f"- 近更新仓库：{freshness} 个，说明近期 momentum 仍在。\n\n"
-        f"## 趋势判断\n"
-        f"- 当前信号更偏向“工具化、低门槛、可复制”的内容形态。\n"
-        f"- 如果同一主题在多平台同时出现，后续 1-2 个周期内大概率继续发酵。\n\n"
-        f"## 行动建议\n"
-        f"- 关注可快速复用的提示词、脚本、工作流和轻量工具链。\n"
-        f"- 对高热度视频和仓库建立跟踪清单，观察二次传播与 star 增长。\n"
-        f"- 重要主题在下次简报中继续对比验证。"
-    )
+    sections = [
+        _hero_line(date.today().strftime('%Y.%m.%d'), title, len(ai_items) + len(video_items) + len(github_items)),
+        _render_section(1, "模型发布/更新", "MODEL RELEASES", ai_items),
+        f"### AI 圈爆款/趋势\n{ai_trend}",
+        _render_section(2, "产品发布/更新", "PRODUCT", video_items),
+        f"### 爆款原因分析\n{_top_reason(video_items)}\n\n### 爆款结构判断\n{_analyze_video_trends(video_items)}",
+        _render_section(3, "行业动态", "INDUSTRY", github_items),
+        f"### GitHub 爆款/趋势\n{github_trend}\n\n近更新仓库：{freshness} 个",
+        "### 趋势判断\n当前信号更偏向“工具化、低门槛、可复制”的内容形态。如果同一主题在多平台同时出现，后续 1-2 个周期内大概率继续发酵。",
+        "### 行动建议\n关注可快速复用的提示词、脚本、工作流和轻量工具链。对高热度视频和仓库建立跟踪清单，观察二次传播与 star 增长。重要主题在下次简报中继续对比验证。",
+    ]
+    return "\n\n".join(sections)

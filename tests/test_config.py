@@ -12,15 +12,15 @@ def test_load_config_merges_env_targets(tmp_path, monkeypatch):
     assert {target.kind for target in config.feishu_targets} == {"user", "chat"}
 
 
-def test_render_briefing_contains_required_sections():
+def test_render_briefing_uses_poster_sections():
     briefing = render_briefing(
         title="晨报",
-        ai_items=[SourceItem(title="AI News", url="https://example.com")],
-        video_items=[SourceItem(title="爆款视频", url="https://example.com/v", metadata={"hook_strength": 2, "repeatability": 2})],
-        github_items=[SourceItem(title="Repo", url="https://github.com/x/y")],
+        ai_items=[SourceItem(title="OpenAI 发布模型", url="https://example.com", source="ai", metadata={"category": "模型发布", "trend_strength": 3})],
+        video_items=[SourceItem(title="爆款视频", url="https://example.com/v", source="video", metadata={"hook_strength": 2, "repeatability": 2})],
+        github_items=[SourceItem(title="LLM Agent Repo", url="https://github.com/x/y", source="github", metadata={"fresh": True})],
     )
-    assert "今日摘要" in briefing
-    assert "爆款原因分析" in briefing
-    assert "爆款结构判断" in briefing
-    assert "趋势判断" in briefing
-    assert "行动建议" in briefing
+    assert "AI HOT 日报" in briefing
+    assert "01 模型发布/更新" in briefing
+    assert "02 产品发布/更新" in briefing
+    assert "03 行业动态" in briefing
+    assert "VOL." in briefing
