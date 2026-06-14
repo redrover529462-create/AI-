@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -11,6 +11,7 @@ class SourceItem:
     score: float = 0.0
     published_at: str | None = None
     summary: str | None = None
+    source: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

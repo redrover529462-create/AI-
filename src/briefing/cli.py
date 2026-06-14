@@ -1,27 +1,24 @@
-from __future__ import annotations
+ï»¿from __future__ import annotations
 
 from pathlib import Path
 import json
-import os
 import sys
 
-from .config import AppConfig, FeishuTarget, default_config, load_config
+from .config import AppConfig, default_config, load_config
 from .models import BriefingBundle, SourceItem
 from .render import render_briefing
 from .state import record_send, should_send
 from .feishu import send_message
+from .sources.github import fetch_github_projects
+from .sources.web import fetch_ai_news
+from .sources.video import fetch_short_video_trends
 
 
 def load_bundle(config: AppConfig) -> BriefingBundle:
-    ai_items = (
-        SourceItem(title="OpenAI ·¢²¼ÐÂÄ£ÐÍ¶¯Ïò", url="https://openai.com/news/", score=90, summary="¹Ù·½¸üÐÂ"),
-    )
-    video_items = (
-        SourceItem(title="±¬¿îÊÓÆµÊ¾Àý", url="https://example.com/video", score=88, summary="¸ß»¥¶¯ÊÓÆµ"),
-    )
-    github_items = (
-        SourceItem(title="Awesome AI Repo", url="https://github.com/example/repo", score=95, summary="¸ß star Ôö³¤"),
-    )
+    sources = config.sources
+    ai_items = tuple(fetch_ai_news(sources.get("ai", {}).get("urls")))
+    video_items = tuple(fetch_short_video_trends(sources.get("video", {}).get("urls")))
+    github_items = tuple(fetch_github_projects(config.github_query))
     return BriefingBundle(ai_items=ai_items, video_items=video_items, github_items=github_items)
 
 
@@ -43,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     briefing = render_briefing(
-        title="³¿¼ä¼ò±¨",
+        title="æ™¨é—´ç®€æŠ¥",
         ai_items=list(bundle.ai_items),
         video_items=list(bundle.video_items),
         github_items=list(bundle.github_items),

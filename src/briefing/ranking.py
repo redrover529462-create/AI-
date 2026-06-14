@@ -1,6 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def rank_items(items: list[dict]) -> list[dict]:

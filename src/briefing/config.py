@@ -17,7 +17,7 @@ class AppConfig:
     timezone: str = "Asia/Shanghai"
     feishu_targets: tuple[FeishuTarget, ...] = field(default_factory=tuple)
     github_token: str | None = None
-    github_query: str = "topic:artificial-intelligence stars:>50"
+    github_query: str = "stars:>100 topic:artificial-intelligence"
     state_path: str = "state/briefing_state.json"
     sources: dict[str, Any] = field(default_factory=dict)
 
@@ -42,7 +42,7 @@ def load_config(path: Path) -> AppConfig:
         timezone=str(data.get("timezone", "Asia/Shanghai")),
         feishu_targets=targets,
         github_token=data.get("github_token"),
-        github_query=str(data.get("github_query", "topic:artificial-intelligence stars:>50")),
+        github_query=str(data.get("github_query", "stars:>100 topic:artificial-intelligence")),
         state_path=str(data.get("state_path", "state/briefing_state.json")),
         sources=dict(data.get("sources", {})),
     )
@@ -55,11 +55,11 @@ def default_config() -> dict[str, Any]:
             {"kind": "user", "id": "ou_your_open_id"},
             {"kind": "chat", "id": "oc_your_chat_id"},
         ],
-        "github_query": "topic:artificial-intelligence stars:>50",
+        "github_query": "stars:>100 topic:artificial-intelligence",
         "state_path": "state/briefing_state.json",
         "sources": {
             "github": {"enabled": True},
-            "ai": {"enabled": True},
-            "video": {"enabled": True},
+            "ai": {"enabled": True, "urls": ["https://openai.com/news/"]},
+            "video": {"enabled": True, "urls": ["https://www.douyin.com/", "https://www.xiaohongshu.com/"]},
         },
     }
