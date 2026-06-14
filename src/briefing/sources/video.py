@@ -8,22 +8,22 @@ import requests
 from ..models import SourceItem
 
 
-def _score_video(text: str, title: str) -> dict[str, float]:
-    lower_text = text.lower()
+def _score_video(title: str, summary: str, hot_value: float) -> dict[str, float]:
+    text = f"{title} {summary}".lower()
     hook_words = ["揭秘", "教程", "如何", "3分钟", "实测", "对比", "前后", "模板"]
     utility_words = ["教程", "方法", "技巧", "攻略", "步骤", "模板"]
     emotion_words = ["震惊", "离谱", "爆了", "泪目", "太强", "真香"]
     repeatable_words = ["模板", "框架", "公式", "清单", "案例"]
-    title_score = sum(1.0 for word in hook_words if word in title or word in text)
-    body_score = sum(1.0 for word in utility_words if word in lower_text)
-    emotion = sum(1.0 for word in emotion_words if word in title or word in text)
-    repeatability = sum(1.0 for word in repeatable_words if word in title or word in text)
+    title_score = sum(1.0 for word in hook_words if word in text)
+    body_score = sum(1.0 for word in utility_words if word in text)
+    emotion = sum(1.0 for word in emotion_words if word in text)
+    repeatability = sum(1.0 for word in repeatable_words if word in text)
     return {
         "hook_strength": min(3.0, title_score),
         "utility": min(3.0, body_score),
         "emotion": min(3.0, emotion),
         "repeatability": min(3.0, repeatability),
-        "score": min(100.0, title_score * 20 + body_score * 12 + emotion * 10 + repeatability * 8),
+        "score": min(100.0, title_score * 20 + body_score * 12 + emotion * 10 + repeatability * 8 + min(20.0, hot_value / 100000)),
     }
 
 
@@ -52,26 +52,18 @@ def _normalize_items(payload: object, kind: str) -> list[SourceItem]:
             or raw_item.get("sentence")
             or "热门内容"
         )
-        url = str(
-            raw_item.get("url")
-            or raw_item.get("share_url")
-            or raw_item.get("shareLink")
-            or raw_item.get("link")
-            or raw_item.get("share_link")
-            or raw_item.get("share_url")
-            or ""
-        )
+        summary = str(raw_item.get("desc") or raw_item.get("desc_short") or raw_item.get("note_desc") or "热门榜单样本")
+        url = str(raw_item.get("url") or raw_item.get("share_url") or raw_item.get("shareLink") or raw_item.get("link") or raw_item.get("share_link") or "")
         if not url:
             url = f"https://www.xiaohongshu.com/search_result?keyword={title}" if kind == "xhs" else f"https://www.douyin.com/search/{title}"
         hot_value = float(raw_item.get("hot_value") or raw_item.get("hotnum") or raw_item.get("score") or 0)
-        score_data = _score_video(title, title)
-        score = max(score_data["score"], min(100.0, hot_value / 100000))
+        score_data = _score_video(title, summary, hot_value)
         items.append(
             SourceItem(
                 title=title,
                 url=url,
-                score=score,
-                summary=str(raw_item.get("desc") or raw_item.get("desc_short") or raw_item.get("note_desc") or "热门榜单样本"),
+                score=score_data["score"],
+                summary=summary,
                 source=kind,
                 metadata={
                     "rank": raw_item.get("position") or index,

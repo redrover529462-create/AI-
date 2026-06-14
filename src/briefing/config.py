@@ -21,6 +21,7 @@ class AppConfig:
     github_token: str | None = None
     github_query: str = "stars:>100 topic:artificial-intelligence"
     xhs_hot_token: str | None = None
+    video_sources: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     state_path: str = "state/briefing_state.json"
     sources: dict[str, Any] = field(default_factory=dict)
 
@@ -53,12 +54,14 @@ def load_config(path: Path) -> AppConfig:
     targets = _merge_targets(raw_targets, env_user_id, env_chat_id)
     if not targets:
         raise ValueError("missing required field: feishu_targets")
+    raw_video_sources = (data.get("sources") or {}).get("video", {}).get("sources", [])
     return AppConfig(
         timezone=str(data.get("timezone", "Asia/Shanghai")),
         feishu_targets=targets,
         github_token=data.get("github_token") or os.getenv("GITHUB_TOKEN"),
         github_query=str(data.get("github_query", "stars:>100 topic:artificial-intelligence")),
         xhs_hot_token=data.get("xhs_hot_token") or os.getenv("XHS_HOT_TOKEN"),
+        video_sources=tuple(dict(item) for item in raw_video_sources if isinstance(item, dict)),
         state_path=str(data.get("state_path", "state/briefing_state.json")),
         sources=dict(data.get("sources", {})),
     )
