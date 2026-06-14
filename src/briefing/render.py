@@ -29,7 +29,7 @@ def _render_item_card(item: SourceItem, index: int, total: int) -> str:
 
 
 def _render_section(number: int, title: str, subtitle: str, items: list[SourceItem]) -> str:
-    header = f"## {number:02d} {title}  \n*{subtitle}*  \n`{len(items)} 篇`"
+    header = f"## {number:02d}  {title.upper()}\n### {title}\n*{subtitle}*  \n`{len(items)} 篇`"
     if not items:
         return header + "\n\n- 暂无可用条目"
     blocks = []

@@ -26,3 +26,9 @@ def test_render_briefing_uses_poster_sections():
     assert "01 模型发布/更新" in briefing
     assert "02 产品发布/更新" in briefing
     assert "03 行业动态" in briefing
+
+
+def test_ai_feed_default_urls_include_aihot():
+    from briefing.config import default_config
+    config = default_config()
+    assert config['sources']['ai']['urls'][0] == 'https://aihot.virxact.com/feed.xml'

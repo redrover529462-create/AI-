@@ -1,0 +1,46 @@
+﻿{
+  "timezone": "Asia/Shanghai",
+  "feishu_targets": [
+    {
+      "kind": "user",
+      "id": "ou_47c247d6040acf2c059fe70cc3d322ca",
+      "label": "me"
+    },
+    {
+      "kind": "chat",
+      "id": "oc_your_chat_id",
+      "label": "team"
+    }
+  ],
+  "github_query": "stars:>100 topic:artificial-intelligence",
+  "state_path": "state/briefing_state.json",
+  "sources": {
+    "github": {
+      "enabled": true
+    },
+    "ai": {
+      "enabled": true,
+      "urls": [
+        "https://aihot.virxact.com/feed.xml",
+        "https://aihot.virxact.com/feed/daily.xml",
+        "https://aihot.virxact.com/feed/all.xml"
+      ]
+    },
+    "video": {
+      "enabled": true,
+      "sources": [
+        {
+          "provider": "douyin_hotlist",
+          "name": "抖音热榜",
+          "url": "https://api.iyuns.com/api/douyinhot"
+        },
+        {
+          "provider": "xhs_hot_search",
+          "name": "小红书热搜",
+          "url": "https://api.justoneapi.com/api/xiaohongshu/hot-search/v1",
+          "requires_token": true
+        }
+      ]
+    }
+  }
+}
