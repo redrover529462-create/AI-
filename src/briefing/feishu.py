@@ -17,7 +17,7 @@ def _cli_command() -> list[str]:
 
 
 def _send_as(target: FeishuTarget) -> str:
-    return 'bot'
+    return 'user' if target.kind == 'user' else 'bot'
 
 
 def _build_post_content(markdown: str) -> str:

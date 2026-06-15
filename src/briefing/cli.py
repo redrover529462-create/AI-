@@ -99,7 +99,11 @@ def main(argv: list[str] | None = None) -> int:
             for poster_path in poster_paths:
                 send_image(target, str(poster_path))
         except Exception:
-            send_message(target, briefing)
+            try:
+                send_message(target, briefing)
+            except Exception as error:
+                print(f'failed to send briefing to {target.kind}:{target.label or target.id}: {error}', file=sys.stderr)
+                continue
 
     record_send(state_path, run_key, 'ok')
     print('sent briefing')
