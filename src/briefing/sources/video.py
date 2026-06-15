@@ -1,8 +1,5 @@
 ﻿from __future__ import annotations
 
-import os
-from datetime import datetime, timezone
-
 import requests
 
 from ..models import SourceItem
@@ -27,7 +24,7 @@ def _score_video(title: str, summary: str, hot_value: float) -> dict[str, float]
     }
 
 
-def _normalize_items(payload: object, kind: str) -> list[SourceItem]:
+def _normalize_items(payload: object, platform: str) -> list[SourceItem]:
     if isinstance(payload, dict):
         if isinstance(payload.get("data"), list):
             raw_items = payload["data"]
@@ -55,7 +52,7 @@ def _normalize_items(payload: object, kind: str) -> list[SourceItem]:
         summary = str(raw_item.get("desc") or raw_item.get("desc_short") or raw_item.get("note_desc") or "热门榜单样本")
         url = str(raw_item.get("url") or raw_item.get("share_url") or raw_item.get("shareLink") or raw_item.get("link") or raw_item.get("share_link") or "")
         if not url:
-            url = f"https://www.xiaohongshu.com/search_result?keyword={title}" if kind == "xhs" else f"https://www.douyin.com/search/{title}"
+            url = f"https://www.xiaohongshu.com/search_result?keyword={title}" if platform == "xhs" else f"https://www.douyin.com/search/{title}"
         hot_value = float(raw_item.get("hot_value") or raw_item.get("hotnum") or raw_item.get("score") or 0)
         score_data = _score_video(title, summary, hot_value)
         items.append(
@@ -64,8 +61,9 @@ def _normalize_items(payload: object, kind: str) -> list[SourceItem]:
                 url=url,
                 score=score_data["score"],
                 summary=summary,
-                source=kind,
+                source="video",
                 metadata={
+                    "platform": platform,
                     "rank": raw_item.get("position") or index,
                     "hot_value": hot_value,
                     "hook_strength": score_data["hook_strength"],

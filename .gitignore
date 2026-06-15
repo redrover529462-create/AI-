@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+artifacts/
+preview*.txt
+feishu-auth-qrcode*.png

@@ -47,7 +47,7 @@ def _merge_targets(file_targets: list[dict[str, Any]], env_user_id: str | None, 
 
 
 def load_config(path: Path) -> AppConfig:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
     raw_targets = data.get("feishu_targets") or []
     env_user_id = os.getenv("FEISHU_USER_ID")
     env_chat_id = os.getenv("FEISHU_CHAT_ID")
@@ -78,7 +78,14 @@ def default_config() -> dict[str, Any]:
         "state_path": "state/briefing_state.json",
         "sources": {
             "github": {"enabled": True},
-            "ai": {"enabled": True, "urls": ["https://openai.com/news/", "https://openai.com/index/"]},
+            "ai": {
+                "enabled": True,
+                "urls": [
+                    "https://aihot.virxact.com/feed.xml",
+                    "https://aihot.virxact.com/feed/daily.xml",
+                    "https://aihot.virxact.com/feed/all.xml"
+                ],
+            },
             "video": {
                 "enabled": True,
                 "sources": [

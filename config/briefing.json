@@ -1,4 +1,4 @@
-﻿{
+{
   "timezone": "Asia/Shanghai",
   "feishu_targets": [
     {
@@ -8,7 +8,7 @@
     },
     {
       "kind": "chat",
-      "id": "oc_your_chat_id",
+      "id": "oc_f3c3daf69dc2455b8eaa9b5d72c5ae7b",
       "label": "team"
     }
   ],
