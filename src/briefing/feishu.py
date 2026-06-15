@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -12,7 +13,7 @@ def _cli_command() -> list[str]:
     if sys.platform == 'win32':
         cli_script = Path.home() / 'AppData' / 'Roaming' / 'npm' / 'node_modules' / '@larksuite' / 'cli' / 'scripts' / 'run.js'
         return ['node', str(cli_script)]
-    return ['lark-cli']
+    return [shutil.which('feishu-cli') or shutil.which('lark-cli') or 'feishu-cli']
 
 
 def _send_as(target: FeishuTarget) -> str:
