@@ -10,7 +10,7 @@ from .image_export import build_poster_images
 from .models import BriefingBundle
 from .render import briefing_keywords, briefing_one_line, briefing_cover_summary, render_briefing
 from .state import current_window_key, record_send, should_send
-from .feishu import ensure_cli_available, send_image, send_message
+from .feishu import ensure_cli_available, send_image, send_message, should_attempt_target
 from .sources.github import fetch_github_projects
 from .sources.web import fetch_ai_news
 from .sources.video import fetch_short_video_trends
@@ -102,17 +102,21 @@ def main(argv: list[str] | None = None) -> int:
 
     sent_targets = 0
     for target in config.feishu_targets:
+        if not should_attempt_target(target):
+            print(f'skipping unsupported target for current send mode: {target.kind}:{target.label or target.id}')
+            continue
         delivered = False
         try:
             for poster_path in poster_paths:
                 send_image(target, str(poster_path))
             delivered = True
-        except Exception:
+        except Exception as image_error:
+            print(f'image send failed for {target.kind}:{target.label or target.id}: {image_error}', file=sys.stderr)
             try:
                 send_message(target, briefing)
                 delivered = True
-            except Exception as error:
-                print(f'failed to send briefing to {target.kind}:{target.label or target.id}: {error}', file=sys.stderr)
+            except Exception as message_error:
+                print(f'failed to send briefing to {target.kind}:{target.label or target.id}: {message_error}', file=sys.stderr)
                 continue
         if delivered:
             sent_targets += 1

@@ -35,6 +35,13 @@ def _send_as(target: FeishuTarget) -> str:
     return 'user' if target.kind == 'user' else 'bot'
 
 
+def should_attempt_target(target: FeishuTarget) -> bool:
+    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
+    if forced_mode == "bot" and target.kind == "user":
+        return False
+    return True
+
+
 def _build_post_content(markdown: str) -> str:
     content_lines = []
     for line in markdown.splitlines():

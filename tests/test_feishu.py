@@ -1,6 +1,6 @@
 from briefing.feishu import send_message, send_image
 from briefing.config import FeishuTarget
-from briefing.feishu import ensure_cli_available
+from briefing.feishu import ensure_cli_available, should_attempt_target
 
 
 def test_send_message_builds_command(monkeypatch):
@@ -85,3 +85,9 @@ def test_ensure_cli_available_raises_when_missing(monkeypatch):
         assert False, "expected FileNotFoundError"
     except FileNotFoundError:
         assert True
+
+
+def test_bot_send_mode_skips_user_target(monkeypatch):
+    monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
+    assert should_attempt_target(FeishuTarget(kind='user', id='ou_x')) is False
+    assert should_attempt_target(FeishuTarget(kind='chat', id='oc_x')) is True
