@@ -21,6 +21,8 @@ def ensure_send_credentials() -> None:
         raise RuntimeError("missing FEISHU_APP_ID for bot send mode")
     if not os.getenv("FEISHU_APP_SECRET"):
         raise RuntimeError("missing FEISHU_APP_SECRET for bot send mode")
+    if not os.getenv("FEISHU_CHAT_ID"):
+        raise RuntimeError("missing FEISHU_CHAT_ID for bot send mode")
 
 
 def should_attempt_target(target: FeishuTarget) -> bool:
@@ -44,9 +46,7 @@ def _tenant_access_token() -> str:
 
 
 def _headers(token: str) -> dict[str, str]:
-    return {
-        "Authorization": f"Bearer {token}",
-    }
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _build_post_content(markdown: str) -> str:

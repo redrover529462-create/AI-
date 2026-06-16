@@ -78,8 +78,20 @@ def test_only_chat_targets_are_attempted():
 def test_send_requires_app_credentials(monkeypatch):
     monkeypatch.delenv("FEISHU_APP_ID", raising=False)
     monkeypatch.delenv("FEISHU_APP_SECRET", raising=False)
+    monkeypatch.delenv("FEISHU_CHAT_ID", raising=False)
     try:
         ensure_send_credentials()
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
         assert "FEISHU_APP_ID" in str(exc)
+
+
+def test_send_requires_chat_id(monkeypatch):
+    monkeypatch.setenv("FEISHU_APP_ID", "app_id")
+    monkeypatch.setenv("FEISHU_APP_SECRET", "app_secret")
+    monkeypatch.delenv("FEISHU_CHAT_ID", raising=False)
+    try:
+        ensure_send_credentials()
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "FEISHU_CHAT_ID" in str(exc)

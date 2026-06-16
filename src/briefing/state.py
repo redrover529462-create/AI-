@@ -22,6 +22,12 @@ def current_window_key(timezone_name: str, moment: datetime | None = None) -> st
     return window_key_for(moment or datetime.now(tz=ZoneInfo(timezone_name)), timezone_name)
 
 
+def current_window_start(timezone_name: str, moment: datetime | None = None) -> datetime:
+    local_moment = (moment or datetime.now(tz=ZoneInfo(timezone_name))).astimezone(ZoneInfo(timezone_name))
+    window_start_hour = (local_moment.hour // 4) * 4
+    return local_moment.replace(hour=window_start_hour, minute=0, second=0, microsecond=0)
+
+
 def should_send(path: Path, key: str) -> bool:
     data = _load(path)
     return key not in data.get("sent", [])

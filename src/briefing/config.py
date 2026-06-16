@@ -38,6 +38,9 @@ def _parse_target(raw: dict[str, Any]) -> FeishuTarget:
 
 
 def _merge_targets(file_targets: list[dict[str, Any]], env_user_id: str | None, env_chat_id: str | None) -> tuple[FeishuTarget, ...]:
+    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
+    if forced_mode == "bot" and env_chat_id:
+        return (FeishuTarget(kind="chat", id=env_chat_id, label="env-chat"),)
     targets = [_parse_target(item) for item in file_targets]
     if env_user_id and not any(target.kind == "user" for target in targets):
         targets.append(FeishuTarget(kind="user", id=env_user_id, label="env-user"))

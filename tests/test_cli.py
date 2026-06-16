@@ -1,4 +1,6 @@
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from briefing import cli
 from briefing.config import AppConfig, FeishuTarget
@@ -134,3 +136,23 @@ def test_main_skips_user_target_in_bot_mode(monkeypatch, tmp_path):
 
     assert cli.main([str(config_path)]) == 0
     assert calls == ["chat"]
+
+
+def test_wait_until_send_time_skips_non_noon_window(monkeypatch):
+    sleep_calls = []
+    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+    monkeypatch.setenv("GITHUB_EVENT_SCHEDULE", "0 0 * * 1-5")
+    morning = datetime(2026, 6, 16, 8, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
+    monkeypatch.setattr(cli, "datetime", type("FakeDateTime", (), {"now": staticmethod(lambda tz=None: morning)}))
+    cli._wait_until_send_time("Asia/Shanghai")
+    assert sleep_calls == []
+
+
+def test_wait_until_send_time_waits_until_noon(monkeypatch):
+    sleep_calls = []
+    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+    before_noon = datetime(2026, 6, 16, 11, 59, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
+    monkeypatch.setenv("GITHUB_EVENT_SCHEDULE", "0 4 * * 1-5")
+    monkeypatch.setattr(cli, "datetime", type("FakeDateTime", (), {"now": staticmethod(lambda tz=None: before_noon)}))
+    cli._wait_until_send_time("Asia/Shanghai")
+    assert sleep_calls == [30.0]

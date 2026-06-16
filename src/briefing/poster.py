@@ -116,7 +116,7 @@ class PosterRenderer:
             tags.append(item.source.upper())
         if item.metadata.get("fresh"):
             tags.append("FRESH")
-        return "  ·  ".join(tags[:2]) or "综合资讯"
+        return "  路  ".join(tags[:2]) or "综合资讯"
 
     def _item_height(self, item: SourceItem, max_width: int, summary_lines: int, show_link: bool = False) -> int:
         title = self._wrap_text(item.title, self.font_item_title, max_width, max_lines=2)
