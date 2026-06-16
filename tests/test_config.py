@@ -19,7 +19,7 @@ def test_render_briefing_uses_poster_sections():
         video_items=[SourceItem(title="爆款视频", url="https://example.com/v", source="video", metadata={"hook_strength": 2, "repeatability": 2})],
         github_items=[SourceItem(title="LLM Agent Repo", url="https://github.com/x/y", source="github", metadata={"fresh": True})],
     )
-    assert "AI HOT 日报" in briefing
+    assert "罗宋汤日报" in briefing
     assert "封面摘要" in briefing
     assert "本期关键词" in briefing
     assert "一句话总评" in briefing

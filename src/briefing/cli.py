@@ -9,8 +9,8 @@ from .config import AppConfig, default_config, load_config
 from .image_export import build_poster_images
 from .models import BriefingBundle
 from .render import briefing_keywords, briefing_one_line, briefing_cover_summary, render_briefing
-from .state import record_send, should_send
-from .feishu import send_image, send_message
+from .state import current_window_key, record_send, should_send
+from .feishu import ensure_cli_available, send_image, send_message
 from .sources.github import fetch_github_projects
 from .sources.web import fetch_ai_news
 from .sources.video import fetch_short_video_trends
@@ -67,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('config_path', nargs='?', default='config/briefing.json')
     parser.add_argument('--preview-only', action='store_true')
+    parser.add_argument('--check-only', action='store_true')
     args = parser.parse_args(argv)
 
     config_path = Path(args.config_path)
@@ -88,25 +89,40 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.buffer.write(b'\n')
         return 0
 
-    run_key = 'daily-briefing'
-    state_path = Path(config.state_path)
-    if not should_send(state_path, run_key):
-        print('briefing already sent for this window')
+    if args.check_only:
+        ensure_cli_available()
+        print('feishu cli check passed')
         return 0
 
+    run_key = current_window_key(config.timezone)
+    state_path = Path(config.state_path)
+    if not should_send(state_path, run_key):
+        print(f'briefing already sent for this window: {run_key}')
+        return 0
+
+    sent_targets = 0
     for target in config.feishu_targets:
+        delivered = False
         try:
             for poster_path in poster_paths:
                 send_image(target, str(poster_path))
+            delivered = True
         except Exception:
             try:
                 send_message(target, briefing)
+                delivered = True
             except Exception as error:
                 print(f'failed to send briefing to {target.kind}:{target.label or target.id}: {error}', file=sys.stderr)
                 continue
+        if delivered:
+            sent_targets += 1
+
+    if sent_targets == 0:
+        print('briefing was not delivered to any target', file=sys.stderr)
+        return 1
 
     record_send(state_path, run_key, 'ok')
-    print('sent briefing')
+    print(f'sent briefing for {run_key} to {sent_targets} target(s)')
     return 0
 
 

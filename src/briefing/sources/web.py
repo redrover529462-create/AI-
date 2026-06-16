@@ -3,6 +3,7 @@
 from xml.etree import ElementTree as ET
 
 import requests
+from xml.etree.ElementTree import ParseError
 
 from ..models import SourceItem
 
@@ -61,7 +62,13 @@ def fetch_ai_news(source_urls: list[str] | None = None) -> list[SourceItem]:
         try:
             response = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
             response.raise_for_status()
-            raw_items = _parse_rss_items(response.text)
+            try:
+                raw_items = _parse_rss_items(response.text)
+            except ParseError:
+                raw_items = []
+            if not raw_items and response.text.strip():
+                text = response.text.strip()
+                raw_items = [{"title": text[:60], "link": url, "description": text[:240], "pubDate": ""}]
             for raw_item in raw_items[:4]:
                 title = raw_item.get("title") or "AI 行业动态"
                 summary = raw_item.get("description") or "来自公开 RSS 的最新 AI 动态"

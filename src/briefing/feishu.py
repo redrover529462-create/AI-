@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 from .config import FeishuTarget
@@ -16,7 +17,21 @@ def _cli_command() -> list[str]:
     return [shutil.which('feishu-cli') or shutil.which('lark-cli') or 'feishu-cli']
 
 
+def ensure_cli_available() -> None:
+    command = _cli_command()
+    executable = command[0]
+    if executable == 'node':
+        if len(command) < 2 or not Path(command[1]).exists():
+            raise FileNotFoundError('feishu-cli entrypoint was not found')
+        return
+    if shutil.which(executable) is None and not Path(executable).exists():
+        raise FileNotFoundError(f'{executable} was not found on PATH')
+
+
 def _send_as(target: FeishuTarget) -> str:
+    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
+    if forced_mode in {"bot", "user"}:
+        return forced_mode
     return 'user' if target.kind == 'user' else 'bot'
 
 
