@@ -1,102 +1,83 @@
-from briefing.feishu import send_message, send_image
+import json
+
 from briefing.config import FeishuTarget
-from briefing.feishu import ensure_cli_available, ensure_send_credentials, should_attempt_target
+from briefing.feishu import ensure_send_credentials, send_image, send_message, should_attempt_target
 
 
-def test_send_message_builds_command(monkeypatch):
-    calls = {}
+def test_send_message_uses_chat_api(monkeypatch):
+    calls = []
 
-    class Result:
-        stdout = '{}'
-        stderr = ''
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
 
-    def fake_run(command, check, capture_output, text, encoding):
-        calls['command'] = command
-        return Result()
+        def raise_for_status(self):
+            return None
 
-    monkeypatch.setattr('subprocess.run', fake_run)
-    result = send_message(FeishuTarget(kind='user', id='ou_x'), '中文测试')
-    assert '--msg-type' in calls['command']
-    assert '--content' in calls['command']
-    assert '\\u4e2d\\u6587' in calls['command'][-2]
-    assert result['stdout'] == '{}'
+        def json(self):
+            return self.payload
 
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        if "tenant_access_token" in url:
+            return Response({"code": 0, "tenant_access_token": "token"})
+        return Response({"code": 0, "data": {"message_id": "om_x"}})
 
-def test_send_image_builds_command(monkeypatch):
-    calls = {}
+    monkeypatch.setenv("FEISHU_APP_ID", "app_id")
+    monkeypatch.setenv("FEISHU_APP_SECRET", "app_secret")
+    monkeypatch.setattr("briefing.feishu.requests.post", fake_post)
 
-    class Result:
-        stdout = '{}'
-        stderr = ''
-
-    def fake_run(command, check, capture_output, text, encoding):
-        calls['command'] = command
-        return Result()
-
-    monkeypatch.setattr('subprocess.run', fake_run)
-    result = send_image(FeishuTarget(kind='chat', id='oc_x'), 'artifacts/briefing-poster.png')
-    assert '--as' in calls['command']
-    assert 'bot' in calls['command']
-    assert '--image' in calls['command']
-    assert 'artifacts/briefing-poster.png' in calls['command']
-    assert result['stdout'] == '{}'
+    payload = send_message(FeishuTarget(kind="chat", id="oc_x"), "hello")
+    assert payload["code"] == 0
+    assert calls[-1][0].endswith("/im/v1/messages")
+    assert calls[-1][1]["params"]["receive_id_type"] == "chat_id"
+    assert calls[-1][1]["json"]["receive_id"] == "oc_x"
+    assert calls[-1][1]["json"]["msg_type"] == "post"
+    assert json.loads(calls[-1][1]["json"]["content"])["zh_cn"]["title"] == "罗宋汤日报"
 
 
-def test_send_message_to_user_uses_user_identity(monkeypatch):
-    calls = {}
+def test_send_image_uploads_then_sends(monkeypatch, tmp_path):
+    calls = []
+    image_path = tmp_path / "poster.png"
+    image_path.write_bytes(b"fake-image")
 
-    class Result:
-        stdout = '{}'
-        stderr = ''
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
 
-    def fake_run(command, check, capture_output, text, encoding):
-        calls['command'] = command
-        return Result()
+        def raise_for_status(self):
+            return None
 
-    monkeypatch.setattr('subprocess.run', fake_run)
-    send_message(FeishuTarget(kind='user', id='ou_x'), 'hello')
-    assert '--as' in calls['command']
-    assert 'user' in calls['command']
+        def json(self):
+            return self.payload
 
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        if "tenant_access_token" in url:
+            return Response({"code": 0, "tenant_access_token": "token"})
+        if url.endswith("/im/v1/images"):
+            return Response({"code": 0, "data": {"image_key": "img_x"}})
+        return Response({"code": 0, "data": {"message_id": "om_x"}})
 
-def test_forced_bot_send_mode_overrides_target(monkeypatch):
-    calls = {}
+    monkeypatch.setenv("FEISHU_APP_ID", "app_id")
+    monkeypatch.setenv("FEISHU_APP_SECRET", "app_secret")
+    monkeypatch.setattr("briefing.feishu.requests.post", fake_post)
 
-    class Result:
-        stdout = '{}'
-        stderr = ''
-
-    def fake_run(command, check, capture_output, text, encoding):
-        calls['command'] = command
-        return Result()
-
-    monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
-    monkeypatch.setattr('subprocess.run', fake_run)
-    send_message(FeishuTarget(kind='user', id='ou_x'), 'hello')
-    assert '--as' in calls['command']
-    assert 'bot' in calls['command']
-
-
-def test_ensure_cli_available_raises_when_missing(monkeypatch):
-    monkeypatch.setattr("briefing.feishu._cli_command", lambda: ["missing-feishu-cli"])
-    monkeypatch.setattr("shutil.which", lambda name: None)
-    try:
-        ensure_cli_available()
-        assert False, "expected FileNotFoundError"
-    except FileNotFoundError:
-        assert True
+    payload = send_image(FeishuTarget(kind="chat", id="oc_x"), str(image_path))
+    assert payload["code"] == 0
+    assert any(url.endswith("/im/v1/images") for url, _ in calls)
+    assert calls[-1][0].endswith("/im/v1/messages")
+    assert json.loads(calls[-1][1]["json"]["content"])["image_key"] == "img_x"
 
 
-def test_bot_send_mode_skips_user_target(monkeypatch):
-    monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
-    assert should_attempt_target(FeishuTarget(kind='user', id='ou_x')) is False
-    assert should_attempt_target(FeishuTarget(kind='chat', id='oc_x')) is True
+def test_only_chat_targets_are_attempted():
+    assert should_attempt_target(FeishuTarget(kind="user", id="ou_x")) is False
+    assert should_attempt_target(FeishuTarget(kind="chat", id="oc_x")) is True
 
 
-def test_bot_send_mode_requires_app_credentials(monkeypatch):
-    monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
-    monkeypatch.delenv('FEISHU_APP_ID', raising=False)
-    monkeypatch.delenv('FEISHU_APP_SECRET', raising=False)
+def test_send_requires_app_credentials(monkeypatch):
+    monkeypatch.delenv("FEISHU_APP_ID", raising=False)
+    monkeypatch.delenv("FEISHU_APP_SECRET", raising=False)
     try:
         ensure_send_credentials()
         assert False, "expected RuntimeError"

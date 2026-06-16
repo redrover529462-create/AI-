@@ -1,82 +1,114 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
-import shutil
-import subprocess
-import sys
 import os
 from pathlib import Path
+
+import requests
 
 from .config import FeishuTarget
 
 
-def _cli_command() -> list[str]:
-    if sys.platform == 'win32':
-        cli_script = Path.home() / 'AppData' / 'Roaming' / 'npm' / 'node_modules' / '@larksuite' / 'cli' / 'scripts' / 'run.js'
-        return ['node', str(cli_script)]
-    return [shutil.which('feishu-cli') or shutil.which('lark-cli') or 'feishu-cli']
+OPEN_BASE_URL = "https://open.feishu.cn/open-apis"
 
 
 def ensure_cli_available() -> None:
-    command = _cli_command()
-    executable = command[0]
-    if executable == 'node':
-        if len(command) < 2 or not Path(command[1]).exists():
-            raise FileNotFoundError('feishu-cli entrypoint was not found')
-        return
-    if shutil.which(executable) is None and not Path(executable).exists():
-        raise FileNotFoundError(f'{executable} was not found on PATH')
+    return
 
 
 def ensure_send_credentials() -> None:
-    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
-    if forced_mode != "bot":
-        return
     if not os.getenv("FEISHU_APP_ID"):
         raise RuntimeError("missing FEISHU_APP_ID for bot send mode")
     if not os.getenv("FEISHU_APP_SECRET"):
         raise RuntimeError("missing FEISHU_APP_SECRET for bot send mode")
 
 
-def _send_as(target: FeishuTarget) -> str:
-    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
-    if forced_mode in {"bot", "user"}:
-        return forced_mode
-    return 'user' if target.kind == 'user' else 'bot'
-
-
 def should_attempt_target(target: FeishuTarget) -> bool:
-    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
-    if forced_mode == "bot" and target.kind == "user":
-        return False
-    return True
+    return target.kind == "chat"
+
+
+def _tenant_access_token() -> str:
+    response = requests.post(
+        f"{OPEN_BASE_URL}/auth/v3/tenant_access_token/internal",
+        json={
+            "app_id": os.getenv("FEISHU_APP_ID", ""),
+            "app_secret": os.getenv("FEISHU_APP_SECRET", ""),
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if payload.get("code") != 0:
+        raise RuntimeError(f"failed to get tenant access token: {payload}")
+    return str(payload["tenant_access_token"])
+
+
+def _headers(token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {token}",
+    }
 
 
 def _build_post_content(markdown: str) -> str:
     content_lines = []
     for line in markdown.splitlines():
-        content_lines.append([{'tag': 'text', 'text': (line + '\n') if line else '\n'}])
-    payload = {'zh_cn': {'title': '罗宋汤日报', 'content': content_lines}}
-    return json.dumps(payload, ensure_ascii=True)
+        content_lines.append([{"tag": "text", "text": (line + "\n") if line else "\n"}])
+    payload = {"zh_cn": {"title": "罗宋汤日报", "content": content_lines}}
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def send_message(target: FeishuTarget, markdown: str) -> dict:
-    command = _cli_command() + ['im', '+messages-send', '--as', _send_as(target)]
-    if target.kind == 'user':
-        command.extend(['--user-id', target.id])
-    else:
-        command.extend(['--chat-id', target.id])
-    command.extend(['--msg-type', 'post', '--content', _build_post_content(markdown), '--json'])
-    result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
-    return {'stdout': result.stdout, 'stderr': result.stderr}
+    token = _tenant_access_token()
+    response = requests.post(
+        f"{OPEN_BASE_URL}/im/v1/messages",
+        params={"receive_id_type": "chat_id"},
+        headers={**_headers(token), "Content-Type": "application/json; charset=utf-8"},
+        json={
+            "receive_id": target.id,
+            "msg_type": "post",
+            "content": _build_post_content(markdown),
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if payload.get("code") != 0:
+        raise RuntimeError(f"failed to send post message: {payload}")
+    return payload
 
 
 def send_image(target: FeishuTarget, image_path: str) -> dict:
-    command = _cli_command() + ['im', '+messages-send', '--as', _send_as(target)]
-    if target.kind == 'user':
-        command.extend(['--user-id', target.id])
-    else:
-        command.extend(['--chat-id', target.id])
-    command.extend(['--image', image_path, '--json'])
-    result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
-    return {'stdout': result.stdout, 'stderr': result.stderr}
+    token = _tenant_access_token()
+    image_file = Path(image_path)
+    with image_file.open("rb") as file_handle:
+        upload_response = requests.post(
+            f"{OPEN_BASE_URL}/im/v1/images",
+            headers=_headers(token),
+            files={
+                "image_type": (None, "message"),
+                "image": (image_file.name, file_handle, "image/png"),
+            },
+            timeout=60,
+        )
+    upload_response.raise_for_status()
+    upload_payload = upload_response.json()
+    if upload_payload.get("code") != 0:
+        raise RuntimeError(f"failed to upload image: {upload_payload}")
+    image_key = upload_payload["data"]["image_key"]
+
+    message_response = requests.post(
+        f"{OPEN_BASE_URL}/im/v1/messages",
+        params={"receive_id_type": "chat_id"},
+        headers={**_headers(token), "Content-Type": "application/json; charset=utf-8"},
+        json={
+            "receive_id": target.id,
+            "msg_type": "image",
+            "content": json.dumps({"image_key": image_key}, ensure_ascii=False),
+        },
+        timeout=30,
+    )
+    message_response.raise_for_status()
+    message_payload = message_response.json()
+    if message_payload.get("code") != 0:
+        raise RuntimeError(f"failed to send image message: {message_payload}")
+    return message_payload
