@@ -78,8 +78,31 @@ def test_check_only_verifies_cli(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "briefing_keywords", lambda *args: "keywords")
     monkeypatch.setattr(cli, "briefing_one_line", lambda *args: "one line")
     monkeypatch.setattr(cli, "ensure_cli_available", lambda: None)
+    monkeypatch.setattr(cli, "ensure_send_credentials", lambda: None)
 
     assert cli.main([str(config_path), "--check-only"]) == 0
+
+
+def test_check_only_verifies_send_credentials(monkeypatch, tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"timezone":"Asia/Shanghai","feishu_targets":[{"kind":"chat","id":"oc_x"}]}', encoding="utf-8")
+    state_path = tmp_path / "state.json"
+
+    monkeypatch.setattr(cli, "load_config", lambda path: _config(state_path))
+    monkeypatch.setattr(cli, "safe_load_bundle", lambda config: _bundle())
+    monkeypatch.setattr(cli, "build_poster_images", lambda **kwargs: [tmp_path / "poster.png"])
+    monkeypatch.setattr(cli, "render_briefing", lambda **kwargs: "briefing")
+    monkeypatch.setattr(cli, "briefing_cover_summary", lambda *args: "summary")
+    monkeypatch.setattr(cli, "briefing_keywords", lambda *args: "keywords")
+    monkeypatch.setattr(cli, "briefing_one_line", lambda *args: "one line")
+    monkeypatch.setattr(cli, "ensure_cli_available", lambda: None)
+    monkeypatch.setattr(cli, "ensure_send_credentials", lambda: (_ for _ in ()).throw(RuntimeError("missing FEISHU_APP_ID")))
+
+    try:
+        cli.main([str(config_path), "--check-only"])
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "FEISHU_APP_ID" in str(exc)
 
 
 def test_main_skips_user_target_in_bot_mode(monkeypatch, tmp_path):

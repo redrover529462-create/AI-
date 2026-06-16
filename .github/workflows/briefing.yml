@@ -25,10 +25,14 @@ jobs:
         env:
           PYTHONPATH: src
           FEISHU_SEND_MODE: bot
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
       - run: python scripts/run_briefing.py
         env:
           PYTHONPATH: src
           FEISHU_SEND_MODE: bot
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_USER_ID: ${{ secrets.FEISHU_USER_ID }}
           FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

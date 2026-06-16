@@ -28,6 +28,16 @@ def ensure_cli_available() -> None:
         raise FileNotFoundError(f'{executable} was not found on PATH')
 
 
+def ensure_send_credentials() -> None:
+    forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
+    if forced_mode != "bot":
+        return
+    if not os.getenv("FEISHU_APP_ID"):
+        raise RuntimeError("missing FEISHU_APP_ID for bot send mode")
+    if not os.getenv("FEISHU_APP_SECRET"):
+        raise RuntimeError("missing FEISHU_APP_SECRET for bot send mode")
+
+
 def _send_as(target: FeishuTarget) -> str:
     forced_mode = os.getenv("FEISHU_SEND_MODE", "").strip().lower()
     if forced_mode in {"bot", "user"}:

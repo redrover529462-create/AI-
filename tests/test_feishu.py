@@ -1,6 +1,6 @@
 from briefing.feishu import send_message, send_image
 from briefing.config import FeishuTarget
-from briefing.feishu import ensure_cli_available, should_attempt_target
+from briefing.feishu import ensure_cli_available, ensure_send_credentials, should_attempt_target
 
 
 def test_send_message_builds_command(monkeypatch):
@@ -91,3 +91,14 @@ def test_bot_send_mode_skips_user_target(monkeypatch):
     monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
     assert should_attempt_target(FeishuTarget(kind='user', id='ou_x')) is False
     assert should_attempt_target(FeishuTarget(kind='chat', id='oc_x')) is True
+
+
+def test_bot_send_mode_requires_app_credentials(monkeypatch):
+    monkeypatch.setenv('FEISHU_SEND_MODE', 'bot')
+    monkeypatch.delenv('FEISHU_APP_ID', raising=False)
+    monkeypatch.delenv('FEISHU_APP_SECRET', raising=False)
+    try:
+        ensure_send_credentials()
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "FEISHU_APP_ID" in str(exc)

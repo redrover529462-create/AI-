@@ -10,7 +10,7 @@ from .image_export import build_poster_images
 from .models import BriefingBundle
 from .render import briefing_keywords, briefing_one_line, briefing_cover_summary, render_briefing
 from .state import current_window_key, record_send, should_send
-from .feishu import ensure_cli_available, send_image, send_message, should_attempt_target
+from .feishu import ensure_cli_available, ensure_send_credentials, send_image, send_message, should_attempt_target
 from .sources.github import fetch_github_projects
 from .sources.web import fetch_ai_news
 from .sources.video import fetch_short_video_trends
@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check_only:
         ensure_cli_available()
+        ensure_send_credentials()
         print('feishu cli check passed')
         return 0
 
